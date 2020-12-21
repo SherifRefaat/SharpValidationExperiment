@@ -26,7 +26,7 @@ namespace SharpValidationExperiment
 
 
         [Benchmark]
-        public void ValidateUsingCSharpValidator()
+        public void ValidateUsingCSharpPatternMatchingValidator()
         {
 
             CSharpPatternValidator.Validate(m1);
