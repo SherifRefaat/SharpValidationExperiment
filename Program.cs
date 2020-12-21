@@ -5,6 +5,8 @@ using FluentValidation;
 using FluentValidation.Results;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using ValidationResult = System.ComponentModel.DataAnnotations.ValidationResult;
 
 namespace SharpValidationExperiment
 {
@@ -43,6 +45,14 @@ namespace SharpValidationExperiment
             v.Validate(m2);
             v.Validate(m3);
             v.Validate(m4);
+        }
+
+        [Benchmark]
+        public void ValidateUsingDataAnnotations()
+        {
+            DataAnnotationsValidator.Validate(m2);
+            DataAnnotationsValidator.Validate(m3);
+            DataAnnotationsValidator.Validate(m4);
         }
 
         [Benchmark]
@@ -114,6 +124,41 @@ namespace SharpValidationExperiment
         }
     }
 
+    public static class DataAnnotationsValidator
+    {
+        public static List<ValidationResult> Validate<T>(T m)
+        {
+            var ctx = new ValidationContext(m);
+            var results = new List<ValidationResult>();
+
+            Validator.TryValidateObject(m, ctx, results, true);
+            if (m is IValidatableObject validatableObject)
+            {
+                ValidateIValidatableObject(validatableObject, results);
+            }
+            return results;
+        }
+
+        private static void ValidateIValidatableObject(IValidatableObject validatableObject, IList<ValidationResult> errors)
+        {
+            var validations = validatableObject.Validate(null);
+            foreach (var vr in validations)
+            {
+                if(vr.MemberNames == null)
+                {
+                    errors.Add(new ValidationResult(vr.ErrorMessage));
+                }
+                else
+                {
+                    foreach (var mn in vr.MemberNames)
+                    {
+                        errors.Add(new ValidationResult(vr.ErrorMessage, new string[] { mn }));
+                    }
+                }
+            }
+        }
+    }
+    
     public static class BareValidator
     {
         public static List<string> Validate(Model m)
@@ -142,14 +187,31 @@ namespace SharpValidationExperiment
         }
     }
 
-    public class Model
+    public class Model : IValidatableObject
     {
         public int Age { get; set; }
 
         public DateTime Dob { get; set; }
 
+        [Required(ErrorMessage = "Name is empty.")]
+        [MinLength(1, ErrorMessage = "Name is empty.")]
         public string Name { get; set; }
 
+        [Required(ErrorMessage = "Numbers are empty.")]
+        [MinLength(1, ErrorMessage = "Numbers are empty.")]
         public List<int> Numbers { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Dob == default
+                || (Dob.Day == 1 && Dob.Month == 1 && Dob.Year == 1)
+                || Dob.Year >= DateTime.Now.Year
+                || Dob.Year <= 2000)
+            {
+                yield return new ValidationResult(
+                    $"Dob is invalid.",
+                    new[] { nameof(Dob) });
+            }
+        }
     }
 }
