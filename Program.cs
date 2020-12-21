@@ -85,31 +85,28 @@ namespace SharpValidationExperiment
     {
         public FluentValidator()
         {
+            this.CascadeMode = CascadeMode.StopOnFirstFailure;
             RuleFor(m => m)
-                .Null()
+                .NotNull()
                 .WithMessage("Null model.");
 
             RuleFor(m => m.Numbers)
-                .Null().WithMessage("Numbers are empty.")
-                .Empty().WithMessage("Numbers are empty.");
+                .NotNull().WithMessage("Numbers are empty.")
+                .NotEmpty().WithMessage("Numbers are empty.");
 
             RuleFor(m => m.Name)
-                .Null().WithMessage("Name is empty.")
-                .Empty().WithMessage("Name is empty.");
+                .NotNull().WithMessage("Name is empty.")
+                .NotEmpty().WithMessage("Name is empty.");
 
             RuleFor(m => m.Dob)
-                .Empty().WithMessage("Date is invalid.")
+                .NotEmpty().WithMessage("Date is invalid.")
                 .Must(m => 
                 {
                     bool result = true;
 
-                    if (m.Day == 1 || m.Month == 1 || m.Year == 1)
-                        result = false;
-
-                    if (m.Year >= DateTime.Now.Year)
-                        result = false;
-
-                    if (m.Year <= 2000)
+                    if (m.Day == 1 && m.Month == 1 && m.Year == 1
+                       || m == default
+                       || m.Year >= DateTime.Now.Year || m.Year <= 2000)
                         result = false;
 
                     return result;
@@ -135,13 +132,10 @@ namespace SharpValidationExperiment
             if (m.Name == null || m.Name.Length == 0)
                 errors.Add("Name is empty.");
 
-            if (m.Dob == default)
-                errors.Add("Dob is invalid.");
-
-            if (m.Dob.Day == 1 || m.Dob.Month == 1 || m.Dob.Year == 1)
-                errors.Add("Dob is invalid.");
-
-            if (m.Dob.Year >= DateTime.Now.Year || m.Dob.Year <= 2000)
+            if (m.Dob == default 
+                || (m.Dob.Day == 1 && m.Dob.Month == 1 && m.Dob.Year == 1) 
+                || m.Dob.Year >= DateTime.Now.Year 
+                || m.Dob.Year <= 2000)
                 errors.Add("Dob is invalid.");
 
             return errors;
