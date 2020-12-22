@@ -95,7 +95,6 @@ namespace SharpValidationExperiment
     {
         public FluentValidator()
         {
-            this.CascadeMode = CascadeMode.StopOnFirstFailure;
             RuleFor(m => m)
                 .NotNull()
                 .WithMessage("Null model.");
