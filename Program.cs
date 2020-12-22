@@ -21,7 +21,7 @@ namespace SharpValidationExperiment
     public class ValidatorFactory
     {
         Model
-            m1 = null,
+            //m1 = null, // Not a typical benchmarking scenario.
             m2 = new Model { Numbers = new List<int>(0) },
             m3 = new Model { Numbers = new List<int>(0), Name = "" },
             m4 = new Model { Numbers = new List<int>(0), Name = "", Dob = new DateTime(2001, 1, 1) };
@@ -30,8 +30,6 @@ namespace SharpValidationExperiment
         [Benchmark]
         public void ValidateUsingCSharpPatternMatchingValidator()
         {
-
-            CSharpPatternValidator.Validate(m1);
             CSharpPatternValidator.Validate(m2);
             CSharpPatternValidator.Validate(m3);
             CSharpPatternValidator.Validate(m4);
@@ -41,7 +39,6 @@ namespace SharpValidationExperiment
         public void ValidateUsingFluentValidator()
         {
             var v = new FluentValidator();
-            //v.Validate(m1); // Not applicable here, will throw exception.
             v.Validate(m2);
             v.Validate(m3);
             v.Validate(m4);
@@ -58,7 +55,6 @@ namespace SharpValidationExperiment
         [Benchmark]
         public void ValidateUsingBareValidator()
         {
-            BareValidator.Validate(m1);
             BareValidator.Validate(m2);
             BareValidator.Validate(m3);
             BareValidator.Validate(m4);
@@ -72,10 +68,7 @@ namespace SharpValidationExperiment
             var errors = new List<string>();
 
             if (m is null)
-            {
                 errors.Add("Null model.");
-                return errors;
-            }
 
             if (m is { Numbers: null or { Count: 0 } })
                 errors.Add("Numbers are empty.");
@@ -165,10 +158,7 @@ namespace SharpValidationExperiment
             var errors = new List<string>();
 
             if (m == null)
-            { 
                 errors.Add("Null model.");
-                return errors;
-            }
 
             if (m.Numbers == null || m.Numbers.Count == 0)
                 errors.Add("Numbers are empty.");
@@ -178,8 +168,8 @@ namespace SharpValidationExperiment
 
             if (m.Dob == default 
                 || (m.Dob.Day == 1 && m.Dob.Month == 1 && m.Dob.Year == 1) 
-                || m.Dob.Year >= DateTime.Now.Year 
-                || m.Dob.Year <= 2000)
+                || m.Dob.Year <= 2000
+                || m.Dob.Year >= DateTime.Now.Year)
                 errors.Add("Dob is invalid.");
 
             return errors;
