@@ -5,6 +5,8 @@ using FluentValidation;
 using FluentValidation.Results;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using ValidationResult = System.ComponentModel.DataAnnotations.ValidationResult;
 
 namespace SharpValidationExperiment
 {
@@ -43,6 +45,14 @@ namespace SharpValidationExperiment
             v.Validate(m2);
             v.Validate(m3);
             v.Validate(m4);
+        }
+
+        [Benchmark]
+        public void ValidateUsingDataAnnotations()
+        {
+            DataAnnotationsValidator.Validate(m2);
+            DataAnnotationsValidator.Validate(m3);
+            DataAnnotationsValidator.Validate(m4);
         }
 
         [Benchmark]
@@ -85,31 +95,28 @@ namespace SharpValidationExperiment
     {
         public FluentValidator()
         {
+            this.CascadeMode = CascadeMode.StopOnFirstFailure;
             RuleFor(m => m)
-                .Null()
+                .NotNull()
                 .WithMessage("Null model.");
 
             RuleFor(m => m.Numbers)
-                .Null().WithMessage("Numbers are empty.")
-                .Empty().WithMessage("Numbers are empty.");
+                .NotNull().WithMessage("Numbers are empty.")
+                .NotEmpty().WithMessage("Numbers are empty.");
 
             RuleFor(m => m.Name)
-                .Null().WithMessage("Name is empty.")
-                .Empty().WithMessage("Name is empty.");
+                .NotNull().WithMessage("Name is empty.")
+                .NotEmpty().WithMessage("Name is empty.");
 
             RuleFor(m => m.Dob)
-                .Empty().WithMessage("Date is invalid.")
+                .NotEmpty().WithMessage("Date is invalid.")
                 .Must(m => 
                 {
                     bool result = true;
 
-                    if (m.Day == 1 || m.Month == 1 || m.Year == 1)
-                        result = false;
-
-                    if (m.Year >= DateTime.Now.Year)
-                        result = false;
-
-                    if (m.Year <= 2000)
+                    if (m.Day == 1 && m.Month == 1 && m.Year == 1
+                       || m == default
+                       || m.Year >= DateTime.Now.Year || m.Year <= 2000)
                         result = false;
 
                     return result;
@@ -117,6 +124,41 @@ namespace SharpValidationExperiment
         }
     }
 
+    public static class DataAnnotationsValidator
+    {
+        public static List<ValidationResult> Validate<T>(T m)
+        {
+            var ctx = new ValidationContext(m);
+            var results = new List<ValidationResult>();
+
+            Validator.TryValidateObject(m, ctx, results, true);
+            if (m is IValidatableObject validatableObject)
+            {
+                ValidateIValidatableObject(validatableObject, results);
+            }
+            return results;
+        }
+
+        private static void ValidateIValidatableObject(IValidatableObject validatableObject, IList<ValidationResult> errors)
+        {
+            var validations = validatableObject.Validate(null);
+            foreach (var vr in validations)
+            {
+                if(vr.MemberNames == null)
+                {
+                    errors.Add(new ValidationResult(vr.ErrorMessage));
+                }
+                else
+                {
+                    foreach (var mn in vr.MemberNames)
+                    {
+                        errors.Add(new ValidationResult(vr.ErrorMessage, new string[] { mn }));
+                    }
+                }
+            }
+        }
+    }
+    
     public static class BareValidator
     {
         public static List<string> Validate(Model m)
@@ -135,27 +177,41 @@ namespace SharpValidationExperiment
             if (m.Name == null || m.Name.Length == 0)
                 errors.Add("Name is empty.");
 
-            if (m.Dob == default)
-                errors.Add("Dob is invalid.");
-
-            if (m.Dob.Day == 1 || m.Dob.Month == 1 || m.Dob.Year == 1)
-                errors.Add("Dob is invalid.");
-
-            if (m.Dob.Year >= DateTime.Now.Year || m.Dob.Year <= 2000)
+            if (m.Dob == default 
+                || (m.Dob.Day == 1 && m.Dob.Month == 1 && m.Dob.Year == 1) 
+                || m.Dob.Year >= DateTime.Now.Year 
+                || m.Dob.Year <= 2000)
                 errors.Add("Dob is invalid.");
 
             return errors;
         }
     }
 
-    public class Model
+    public class Model : IValidatableObject
     {
         public int Age { get; set; }
 
         public DateTime Dob { get; set; }
 
+        [Required(ErrorMessage = "Name is empty.")]
+        [MinLength(1, ErrorMessage = "Name is empty.")]
         public string Name { get; set; }
 
+        [Required(ErrorMessage = "Numbers are empty.")]
+        [MinLength(1, ErrorMessage = "Numbers are empty.")]
         public List<int> Numbers { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Dob == default
+                || (Dob.Day == 1 && Dob.Month == 1 && Dob.Year == 1)
+                || Dob.Year >= DateTime.Now.Year
+                || Dob.Year <= 2000)
+            {
+                yield return new ValidationResult(
+                    $"Dob is invalid.",
+                    new[] { nameof(Dob) });
+            }
+        }
     }
 }
